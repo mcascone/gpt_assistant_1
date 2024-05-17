@@ -1,0 +1,13 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: asst
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    # command: ["/bin/bash", "-c", "sleep infinity"]
+    ports:
+      - "3000:3000"
