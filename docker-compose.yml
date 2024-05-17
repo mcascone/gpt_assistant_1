@@ -8,6 +8,9 @@ services:
       - .env
     volumes:
       - .:/app
-    # command: ["/bin/bash", "-c", "sleep infinity"]
-    ports:
-      - "3000:3000"
+    
+    # command: ["/bin/bash", "-c", "sleep infinity"] # uncomment this line to keep alive for debug
+
+    # send logs to shell (when not running debug or detached mode)
+    tty: true
+    stdin_open: true
