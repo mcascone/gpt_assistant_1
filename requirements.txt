@@ -3,4 +3,3 @@ mwclient
 mwparserfromhell
 pandas
 tiktoken
-pickle
