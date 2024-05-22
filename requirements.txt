@@ -3,3 +3,4 @@ mwclient
 mwparserfromhell
 pandas
 tiktoken
+scipy

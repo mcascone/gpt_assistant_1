@@ -4,6 +4,11 @@ import mwparserfromhell  # for splitting Wikipedia articles into sections
 import mwclient
 import re  # for cutting <ref> links out of Wikipedia articles
 import tiktoken  # for counting tokens
+import pandas as pd
+from scipy import spatial  # for calculating vector similarities for search
+import openai
+import numpy as np
+
 
 GPT_MODEL = "gpt-3.5-turbo"  # only matters insofar as it selects which tokenizer to use
 
@@ -206,3 +211,108 @@ def split_strings_from_subsection(
         return results
   # otherwise no split was found, so just truncate (should be very rare)
   return [truncated_string(string, model=model, max_tokens=max_tokens)]
+
+
+# search function
+EMBEDDING_MODEL = "text-embedding-3-small"
+
+def strings_ranked_by_relatedness(
+  query: str,
+  df: pd.DataFrame,
+  client,
+  relatedness_fn=lambda x, y: 1 - spatial.distance.cosine(x, y),
+  top_n: int = 100
+) -> tuple[list[str], list[float]]:
+  """Returns a list of strings and relatednesses, sorted from most related to least."""
+  query_embedding_response = client.embeddings.create(
+        model=EMBEDDING_MODEL,
+        input=query,
+    )
+  query_embedding = np.array(query_embedding_response.data[0].embedding)
+  query_embedding = query_embedding.flatten()  # Ensure the query embedding is 1-D
+
+  def process_embedding(embedding):
+      embedding = np.array(embedding)
+      if embedding.size == 0 or embedding.ndim != 1 or embedding.shape[0] != query_embedding.shape[0]:  # Check for invalid embeddings
+          return None
+      return embedding
+
+  print(f"Query embedding shape: {query_embedding.shape}")
+
+  strings_and_relatednesses = []
+  for i, row in df.iterrows():
+      row_embedding = process_embedding(row["embedding"])
+      if row_embedding is None:  # Skip invalid embeddings
+          print(f"Skipping row {i} due to invalid embedding shape: {row['embedding']}")
+          continue
+      print(f"Row {i} embedding shape: {row_embedding.shape}")
+      relatedness = relatedness_fn(query_embedding, row_embedding)
+      strings_and_relatednesses.append((row["text"], relatedness))
+
+  strings_and_relatednesses.sort(key=lambda x: x[1], reverse=True)
+  if strings_and_relatednesses:
+      strings, relatednesses = zip(*strings_and_relatednesses)
+      return strings[:top_n], relatednesses[:top_n]
+  else:
+      return [], []
+
+
+
+def num_tokens(text: str, model: str = GPT_MODEL) -> int:
+  """Return the number of tokens in a string."""
+  encoding = tiktoken.encoding_for_model(model)
+  return len(encoding.encode(text))
+
+
+# Below, we define a function ask that:
+# Takes a user query
+# Searches for text relevant to the query
+# Stuffs that text into a message for GPT
+# Sends the message to GPT
+# Returns GPT's answer
+
+def query_message(
+  query: str,
+  df: pd.DataFrame,
+  model: str,
+  token_budget: int
+) -> str:
+  """Return a message for GPT, with relevant source texts pulled from a dataframe."""
+  strings, relatednesses = strings_ranked_by_relatedness(query, df, model)
+  introduction = 'Use the below articles on the 2024 Oscars. If the answer cannot be found in the articles, write "I could not find an answer."'
+  question = f"\n\nQuestion: {query}"
+  message = introduction
+  for string in strings:
+    next_article = f'\n\nWikipedia article section:\n"""\n{string}\n"""'
+    if (
+      num_tokens(message + next_article + question, model=model)
+      > token_budget
+    ):
+      break
+    else:
+      message += next_article
+  return message + question
+
+
+def ask(
+  query: str,
+  df: pd.DataFrame,
+  model: str = GPT_MODEL,
+  token_budget: int = 4096 - 500,
+  print_message: bool = False,
+) -> str:
+  """Answers a query using GPT and a dataframe of relevant texts and embeddings."""
+  message = query_message(query, df, model=model, token_budget=token_budget)
+  if print_message:
+    print(message)
+  messages = [
+    {"role": "system", "content": "You answer questions about the 2024 Oscars."},
+    {"role": "user", "content": message},
+  ]
+  response = client.chat.completions.create(
+    model=model,
+    messages=messages,
+    temperature=0
+  )
+  response_message = response.choices[0].message.content
+  return response_message

@@ -1,6 +1,6 @@
 # type: ignore
 
-import embed_helpers as eh
+import src.embed_helpers as eh
 import pickle
 import os
 import openai
@@ -15,18 +15,18 @@ client = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 CATEGORY_TITLE = "Category:Academy Awards"
 WIKI_SITE = "en.wikipedia.org"
 
-site = mwclient.Site(WIKI_SITE)
-category_page = site.pages[CATEGORY_TITLE]
+# site = mwclient.Site(WIKI_SITE)
+# category_page = site.pages[CATEGORY_TITLE]
 # titles = eh.titles_from_category(category_page, max_depth=1)
-# ^note: max_depth=1 means we go one level deep in the category tree
+# # ^note: max_depth=1 means we go one level deep in the category tree
 
 # Save titles to disk
-# with open('titles.pkl', 'wb') as f:
+# with open('data/titles.pkl', 'wb') as f:
 #   pickle.dump(titles, f)
 
-# open the file and read the content
-with open('titles.pkl', 'rb') as f:
-  titles = pickle.load(f)
+# # open the file and read the content
+# with open('data/titles.pkl', 'rb') as f:
+#   titles = pickle.load(f)
 
 # print(f"Found {len(titles)} article titles in {CATEGORY_TITLE}.")
 
@@ -39,27 +39,27 @@ with open('titles.pkl', 'rb') as f:
 # wikipedia_sections = [eh.clean_section(ws) for ws in wikipedia_sections]
 
 # # save sections to disk
-# with open('wikipedia_sections.pkl', 'wb') as f:
+# with open('data/wikipedia_sections.pkl', 'wb') as f:
 #   pickle.dump(wikipedia_sections, f)
 
-# open the file and read the content
-with open('wikipedia_sections.pkl', 'rb') as f:
-  wikipedia_sections = pickle.load(f)
+# # open the file and read the content
+# with open('data/wikipedia_sections.pkl', 'rb') as f:
+#   wikipedia_sections = pickle.load(f)
   
 # print(f"Found {len(wikipedia_sections)} sections in {len(titles)} pages.")
 
 
 # # filter out sections that are too short or not useful
-original_num_sections = len(wikipedia_sections)
+# original_num_sections = len(wikipedia_sections)
 # wikipedia_sections = [ws for ws in wikipedia_sections if eh.keep_section(ws)]
 
 # # save filtered sections to disk
-# with open('wikipedia_sections_filtered.pkl', 'wb') as f:
+# with open('data/wikipedia_sections_filtered.pkl', 'wb') as f:
 #   pickle.dump(wikipedia_sections, f)
 
-# open the file and read the content
-with open('wikipedia_sections_filtered.pkl', 'rb') as f:
-  wikipedia_sections = pickle.load(f)
+# # open the file and read the content
+# with open('data/wikipedia_sections_filtered.pkl', 'rb') as f:
+#   wikipedia_sections = pickle.load(f)
 
 # print(f"Filtered out {original_num_sections-len(wikipedia_sections)} sections, leaving {len(wikipedia_sections)} sections.")
 
@@ -80,18 +80,18 @@ with open('wikipedia_sections_filtered.pkl', 'rb') as f:
 #   wikipedia_strings.extend(eh.split_strings_from_subsection(section, max_tokens=MAX_TOKENS))
 
 # # save strings to disk
-# with open('wikipedia_strings.pkl', 'wb') as f:
+# with open('data/wikipedia_strings.pkl', 'wb') as f:
 #   pickle.dump(wikipedia_strings, f)
 
-# open the file and read the content
-with open('wikipedia_strings.pkl', 'rb') as f:
-  wikipedia_strings = pickle.load(f)
+# # open the file and read the content
+# with open('data/wikipedia_strings.pkl', 'rb') as f:
+#   wikipedia_strings = pickle.load(f)
 
 # print(f"{len(wikipedia_sections)} Wikipedia sections split into {len(wikipedia_strings)} strings.")
 
 # eh.print_spacer()
 
-# print example data
+# # print example data
 # print(wikipedia_strings[1])
 
 # EMBEDDING_MODEL = "text-embedding-3-small"
@@ -116,10 +116,20 @@ with open('wikipedia_strings.pkl', 'rb') as f:
 # download pre-chunked text and pre-computed embeddings
 # this file is ~200 MB, so may take a minute depending on your connection speed
 embeddings_path = "data/oscars.csv"
-
 df = pd.read_csv(embeddings_path)
 
-# convert embeddings from CSV str type back to list type
-df['embedding'] = df['embedding'].apply(ast.literal_eval)
+# # convert embeddings from CSV str type back to list type
+# df['embedding'] = df['embedding'].apply(ast.literal_eval)
 
-print(df.head())
+# print(df)
+
+eh.print_spacer()
+
+# examples
+# strings, relatednesses = eh.strings_ranked_by_relatedness("best actor", df, client, top_n=5)
+# for string, relatedness in zip(strings, relatednesses):
+#   print(f"{relatedness=:.3f}")
+#   print(string)
+#   print()
+
+eh.ask('Who won for best lead at the 2024 Oscars?', df, client)
