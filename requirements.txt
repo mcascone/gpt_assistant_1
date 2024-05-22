@@ -1,6 +1,10 @@
 openai
-mwclient
-mwparserfromhell
-pandas
-tiktoken
-scipy
+# mwclient
+# mwparserfromhell
+# pandas
+# tiktoken
+# scipy
+IPython
+opencv-python
+moviepy
+time-python
